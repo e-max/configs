@@ -1,0 +1,4 @@
+#!/bin/sh
+for i in `seq 100`; do 
+	echo $i "A brown quick fox jumps over the lazy dog"; 
+done;

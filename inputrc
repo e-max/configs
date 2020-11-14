@@ -1,0 +1,4 @@
+#set editing-mode emacs
+set show-all-if-unmodified on
+"\e[A": history-search-backward
+"\e[B": history-search-forward

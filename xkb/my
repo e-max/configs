@@ -1,0 +1,34 @@
+
+xkb_symbols "my" {
+	key <AD02> {
+        symbols[Group1]= [               w,               W ],
+        symbols[Group2]= [    Cyrillic_tse,    Cyrillic_TSE ]
+    };
+
+
+    key <AD03> {	
+		symbols[Group1]= 	[	  e,	E,	bracketleft		],
+		symbols[Group2]= 	[        Cyrillic_u,        Cyrillic_U ,	bracketleft	 ]
+    };
+    key <AD04> {	
+    	symbols[Group1]= 	[	  r,	R,	bracketright		]	,
+        symbols[Group2]= 	[       Cyrillic_ka,       Cyrillic_KA ,	bracketright		 ]
+    };
+
+	key <AC03> {	
+		symbols[Group1]= 	[	  d,	D,	braceleft	]	,
+        symbols[Group2]= 	[       Cyrillic_ve,       Cyrillic_VE ,	braceleft ]
+	};
+	key <AC04> {	
+		symbols[Group1]= 	[	  f,	F,  braceright		]	,
+        symbols[Group2]= 	[        Cyrillic_a,        Cyrillic_A ,  braceright	 ]
+	};
+	key <AB03> {	
+		symbols[Group1]= 	[	  c,	C,	parenleft		]	,
+        symbols[Group2]= 	[       Cyrillic_es,       Cyrillic_ES ,	parenleft ]
+	};
+	key <AB04> {	
+		symbols[Group1]= 	[	  v,	V,	parenright		]	,
+        symbols[Group2]= 	[       Cyrillic_em,       Cyrillic_EM ,	parenright	 ]
+	};
+};
