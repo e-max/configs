@@ -1,0 +1,13 @@
+#!/bin/sh
+
+clean_up() {
+	rm -f /tmp/scratchpad.lock;
+}
+trap clean_up EXIT;
+
+
+lockfile -r 0 /tmp/scratchpad.lock || exit 1
+#while [ -n "$DISPLAY" ]; do urxvt -name urxvt_scratchpad; done;
+#while xprop -root ; do urxvt -name urxvt_scratchpad; done;
+while xprop -root ; do kitty --name scratchpad; done;
+

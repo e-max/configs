@@ -1,0 +1,7 @@
+#!/bin/sh
+minikube start
+kubectl create ns local-kraken
+kubectl create ns local-futures
+read -s -p "Password: " password
+kubectl -n local-kraken create secret docker-registry kakarot-full-stack --docker-server=https://reg-kakarot.chorse.space --docker-username=maxim --docker-password=$password
+kubectl -n local-futures create secret docker-registry kakarot-full-stack --docker-server=https://reg-kakarot.chorse.space --docker-username=maxim --docker-password=$password
