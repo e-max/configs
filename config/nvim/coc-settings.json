@@ -2,5 +2,7 @@
 	"snippets.ultisnips.directories": [
 	"UltiSnips",
 	"mysnippets"
-	]
+	],
+	"snippets.priority": 200
+
 }
