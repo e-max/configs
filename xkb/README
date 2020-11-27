@@ -1,5 +1,17 @@
 #как это дело использовать
 xkbcomp -I/home/e-max/configs/xkb/ ~/configs/xkb/xkb.conf $DISPLAY
+
+# in order to use Caps as  Esc+Ctrl
+1) setxkbmap -v 10 -model pc104 -layout us,ru -variant ,  -option ctrl:nocaps,grp:win_space_toggle 
+OR 
+localectl set-x11-keymap us,ru pc104 , ctrl:nocaps,grp:win_space_toggle
+
+to check if it is all right 
+setxkbmap -v 10 -print
+OR
+localectl status
+
+2)
 xcape -e 'Control_L=Escape'
 
 
