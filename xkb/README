@@ -1,4 +1,5 @@
 #как это дело использовать
 xkbcomp -I/home/e-max/configs/xkb/ ~/configs/xkb/xkb.conf $DISPLAY
+xcape -e 'Control_L=Escape'
 
 
