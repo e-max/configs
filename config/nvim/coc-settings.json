@@ -3,6 +3,12 @@
 	"UltiSnips",
 	"mysnippets"
 	],
-	"snippets.priority": 200
+	"snippets.priority": 200,
 
+    "rust-analyzer.cargo.loadOutDirsFromCheck": true,
+    "rust-analyzer.procMacro.enable": true,
+    "rust-analyzer.cargo.allFeatures": true,
+    "rust-analyzer.checkOnSave.extraArgs": [
+		"--target-dir", "/home/e-max/tmp/rust-analyzer-check"
+	]
 }

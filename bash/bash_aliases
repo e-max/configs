@@ -12,3 +12,4 @@ alias vim="nvim"
 alias icat="kitty +kitten icat --align left"
 alias titl="tilt"
 
+alias lg="lazygit"
