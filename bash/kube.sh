@@ -10,7 +10,8 @@ current_namespace() {
 }
 
 ks() {
-	kubectl config use-context "$*"
+	context=$(kubectl config get-contexts | tail -n +1 | awk '{print $2}' | fzf -q "$*")
+	kubectl config use-context "$context"
 }
 
 kn() {

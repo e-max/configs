@@ -98,3 +98,5 @@ bind -m emacs -x     '"\eh": run-help'
 
 
 
+
+source ~/.config/up/up.sh
