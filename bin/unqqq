@@ -1,0 +1,1 @@
+git tag | grep qqq | xargs git tag -d

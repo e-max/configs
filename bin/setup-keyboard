@@ -1,0 +1,5 @@
+#!/bin/bash
+# грузим свои настройки клавиатуры (Caps == Ctrl)
+xkbcomp -I/home/e-max/configs/xkb/ ~/configs/xkb/xkb.conf $DISPLAY
+# Короткое нажатие на Caps эквивалентно Esc, а длинное - Ctrl
+xcape -e 'Control_L=Escape'

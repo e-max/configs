@@ -1,0 +1,13 @@
+#tmux list-sessions | sed -E 's/:.*$//' | grep -v \"^$(tmux display-message -p '#S')\$\"  | nl | fzf --reverse | awk '{print $2}' | xargs tmux switch-client -t
+sess=$(tmux list-sessions | sed -E 's/:.*$//' | grep -v \"^$(tmux display-message -p '#S')\$\"  | nl | fzf --reverse | awk '{print $2}');
+if [ -n "$sess" ]; then
+if [ -n "$TMUX" ]; then
+  tmux switch-client -t $sess
+else
+  tmux attach-session -dt $sess
+fi
+else 
+  echo "session not selected";
+fi
+
+
