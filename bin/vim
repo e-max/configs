@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Check if NVIM_LISTEN_ADDRESS is set
+if [ -z "$NVIM_LISTEN_ADDRESS" ]; then
+    # NVIM_LISTEN_ADDRESS is not set, run nvim with the file
+    nvim "$@"
+else
+    # NVIM_LISTEN_ADDRESS is set, run nvim with --server and --remote options
+    nvim --listen "$NVIM_LISTEN_ADDRESS" "$@"
+fi

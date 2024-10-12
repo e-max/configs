@@ -158,3 +158,31 @@ export ABYSS_USERNAME=maxim
 export AWS_DEFAULT_PROFILE=abyss
 export AWS_PROFILE=abyss
 eval "$(atuin init zsh)"
+#
+# # Initialize a counter for history navigation
+# typeset -g HISTORY_INDEX=0
+#
+# atuin-previous-command() {
+#     # Increment the history index to go further back each time
+#
+#     # Fetch the command at the current history index
+#     local previous_command=$(atuin search --limit 1 --cmd-only --filter-mode session --offset $HISTORY_INDEX)
+#     HISTORY_INDEX=$((HISTORY_INDEX + 1))
+#     BUFFER=$previous_command
+#     CURSOR=$#BUFFER  # Move cursor to the end of the buffer
+#     zle redisplay  # Redisplay the buffer
+# }
+#
+# # Create a new widget that resets history index and calls the original accept-line
+# atuin-accept-line() {
+#     HISTORY_INDEX=0  # Reset the history index
+#     zle .accept-line  # Call the original accept-line widget
+# }
+#
+# # Bind the custom accept-line widget
+# zle -N atuin-accept-line
+# bindkey '^M' atuin-accept-line  # Bind Enter to the new widget
+#
+# # Bind the history navigation function to Ctrl-P
+# zle -N atuin-previous-command
+# bindkey '^P' atuin-previous-command
