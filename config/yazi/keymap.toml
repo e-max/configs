@@ -7,32 +7,32 @@ on   = "<Esc>"
 run  = "close"
 desc = "Cancel input"
 
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on   = [ "c", "a" ]
 run  = "plugin compress"
 desc = "Archive selected files"
 
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = [ "b", "a" ]
 run = "plugin bookmarks --args=save"
 desc = "Save current position as a bookmark"
 
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = [ "g", "b" ]
 run = "plugin bookmarks --args=jump"
 desc = "Jump to a bookmark"
 
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = [ "b", "d" ]
 run = "plugin bookmarks --args=delete"
 desc = "Delete a bookmark"
 
-[[manager.prepend_keymap]]
+[[mgr.prepend_keymap]]
 on = [ "b", "D" ]
 run = "plugin bookmarks --args=delete_all"
 desc = "Delete all bookmarks"
 
-[manager]
+[mgr]
 
 keymap = [
 	{ on = [ "'" ], run = "shell --block  bash\n",                                desc = "Open console in the current folder" },
