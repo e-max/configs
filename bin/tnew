@@ -9,8 +9,8 @@ if tmux has-session -t "=$SESSION_NAME" 2>/dev/null; then
   exit 1
 fi
 
-tmux new-session -d -s "$SESSION_NAME" -e TMUX_NVIM_ADDRESS="$NVIM_SOCKET" \
-  "zsh -i -c '~/bin/vim; zsh'"  # Start nvim inside zsh, then return to shell when nvim exits
+VIM_WINDOW=$(tmux new-session -d -P -F "#{window_id}" -s "$SESSION_NAME" -e TMUX_NVIM_ADDRESS="$NVIM_SOCKET")
+tmux send-keys -t "$VIM_WINDOW" "$HOME/bin/vim" Enter
 
 tmux new-window -t "$SESSION_NAME:" -e TMUX_NVIM_ADDRESS="$NVIM_SOCKET"
 
