@@ -1,10 +1,27 @@
 #!/bin/bash
+set -e
 
-# Check if NVIM_LISTEN_ADDRESS is set
-if [ -z "$NVIM_LISTEN_ADDRESS" ]; then
-    # NVIM_LISTEN_ADDRESS is not set, run nvim with the file
-    nvim "$@"
+# If TMUX_NVIM_ADDRESS is set and the socket exists, use remote
+if [ -n "$TMUX_NVIM_ADDRESS" ] && [ -S "$TMUX_NVIM_ADDRESS" ]; then
+    files=()
+    args=()
+
+    # Separate files and other arguments
+    for arg in "$@"; do
+        if [ -f "$arg" ] || [ -e "$arg" ]; then
+            files+=("$(realpath "$arg")")
+        else
+            args+=("$arg")
+        fi
+    done
+
+    # If there are files, send them all at once
+    if [ ${#files[@]} -gt 0 ]; then
+        nvim --server "$TMUX_NVIM_ADDRESS" --remote-silent "${files[@]}" "${args[@]}"
+    else
+        nvim --server "$TMUX_NVIM_ADDRESS" --remote-silent "${args[@]}"
+    fi
 else
-    # NVIM_LISTEN_ADDRESS is set, run nvim with --server and --remote options
-    nvim --server "$NVIM_LISTEN_ADDRESS"   --remote-silent "$(realpath "$1")"
+    # Fallback to local nvim
+    nvim "$@"
 fi

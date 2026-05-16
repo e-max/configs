@@ -1,0 +1,218 @@
+#!/usr/bin/env bash
+# Claude Code notification helper.
+# Invoked from Notification / Stop hooks in ~/.claude/settings.json.
+#
+# Usage: claude-notify [message] [app_icon]
+#
+# Builds a notification that:
+#   - titles itself with the tmux session:window.pane the Claude is running in
+#   - when clicked, activates kitty, focuses the originating kitty OS-window,
+#     and selects the right tmux window + pane.
+
+set -u
+
+MSG="${1:-Needs your attention}"
+APP_ICON="${2:-}"
+
+TMUX_BIN=/opt/homebrew/bin/tmux
+KITTY_BIN=/opt/homebrew/bin/kitty
+NOTIFIER=/opt/homebrew/bin/terminal-notifier
+
+# ---- gather context -------------------------------------------------------
+
+LOG=/tmp/claude-notify.log
+
+if [[ -n "${TMUX:-}" ]] && [[ -n "${TMUX_PANE:-}" ]]; then
+  # Single tmux call, comma-separated, to save round trips.
+  IFS=',' read -r SESSION WINDOW WNAME PANE WIN_ACTIVE PANE_ACTIVE SESS_ATTACHED <<<"$(
+    "$TMUX_BIN" display-message -p -t "$TMUX_PANE" \
+      '#S,#I,#W,#{pane_index},#{window_active},#{pane_active},#{session_attached}' 2>/dev/null
+  )"
+  SESSION="${SESSION:-?}"; WINDOW="${WINDOW:-?}"; PANE="${PANE:-?}"
+  TMUX_LOC="${SESSION}:${WINDOW}.${PANE}"
+  [[ -n "$WNAME" ]] && TMUX_LOC="${TMUX_LOC} ${WNAME}"
+else
+  SESSION=""
+  WINDOW=""
+  PANE=""
+  TMUX_LOC="no-tmux"
+  WIN_ACTIVE=0
+  PANE_ACTIVE=0
+  SESS_ATTACHED=0
+fi
+
+# Find kitty's control socket. listen_on in kitty.conf creates
+# /tmp/kitty-<pid>; typically exactly one kitty is running. No TTY is
+# available in the hook or click-handler context, so we can't fall back to
+# kitty's escape-sequence transport — the socket path is mandatory.
+KLISTEN=""
+sockets=( /tmp/kitty-* )
+if (( ${#sockets[@]} == 1 )) && [[ -S "${sockets[0]}" ]]; then
+  KLISTEN="unix:${sockets[0]}"
+elif (( ${#sockets[@]} > 1 )); then
+  # Multiple kitty instances. Prefer $KITTY_PID if set and its socket exists.
+  if [[ -n "${KITTY_PID:-}" && -S "/tmp/kitty-$KITTY_PID" ]]; then
+    KLISTEN="unix:/tmp/kitty-$KITTY_PID"
+  else
+    # Fall back to the most recently modified socket.
+    newest=$(ls -t /tmp/kitty-* 2>/dev/null | head -n 1)
+    [[ -S "$newest" ]] && KLISTEN="unix:$newest"
+  fi
+fi
+
+# Determine the kitty window currently showing our tmux client, plus
+# whether its OS-window is focused.
+#
+# $KITTY_WINDOW_ID is captured by the shell at start-up and goes stale as
+# soon as tmux is reattached from a different kitty window, so we cannot
+# trust it. Instead: find the PID of the tmux client attached to our
+# session, then ask kitty which window has that PID in its foreground
+# process tree.
+KID=""
+KITTY_OS_FOCUSED=0
+if [[ -n "$KLISTEN" && -n "$SESSION" ]]; then
+  while IFS= read -r client_pid; do
+    [[ -z "$client_pid" ]] && continue
+    match=$("$KITTY_BIN" @ --to "$KLISTEN" ls 2>/dev/null \
+      | /usr/bin/python3 -c "
+import json, sys
+pid = int(sys.argv[1])
+for osw in json.load(sys.stdin):
+    for tab in osw.get('tabs', []):
+        for w in tab.get('windows', []):
+            for p in w.get('foreground_processes', []):
+                if p.get('pid') == pid:
+                    print(w['id'], int(bool(osw.get('is_focused'))))
+                    sys.exit(0)
+" "$client_pid" 2>/dev/null)
+    if [[ -n "$match" ]]; then
+      read -r KID KITTY_OS_FOCUSED <<<"$match"
+      break
+    fi
+  done < <("$TMUX_BIN" list-clients -t "$SESSION" -F '#{client_pid}' 2>/dev/null)
+fi
+
+# Last-ditch fallback: the stale env var. Better than nothing if the
+# lookup fails. We can't know OS-window focus in that case, so assume not.
+if [[ -z "$KID" ]]; then
+  KID="${KITTY_WINDOW_ID:-}"
+  KITTY_OS_FOCUSED=0
+fi
+
+# Skip notification if tmux says the pane is currently visible AND the
+# kitty OS-window showing it is focused. The kitty-focus check distinguishes
+# "two tmux sessions in two kitty OS-windows" — notification only suppressed
+# for the one the user is actually looking at.
+if [[ "$WIN_ACTIVE" == "1" && "$PANE_ACTIVE" == "1" \
+      && "${SESS_ATTACHED:-0}" -gt 0 \
+      && "$KITTY_OS_FOCUSED" == "1" ]]; then
+  echo "=== skip $(date) === $TMUX_LOC visible and kitty OS-window focused" >>"$LOG"
+  exit 0
+fi
+
+TITLE="Claude Code [${TMUX_LOC}]"
+
+# ---- build click action ---------------------------------------------------
+#
+# The -execute command runs outside kitty's process tree, so it won't
+# inherit env. Bake the socket path in explicitly via `kitty @ --to ...`.
+#
+# Steps are joined with `;` (not `&&`) so tmux navigation still runs if
+# kitty focus fails. All output is appended to /tmp/claude-notify.log for
+# debugging.
+
+# Write the click action to a temp script rather than inlining it into
+# -execute. terminal-notifier's -execute is finicky with complex quoting;
+# a standalone script sidesteps all that.
+CLICK_SCRIPT="/tmp/claude-notify-click.sh"
+: >"$CLICK_SCRIPT"
+chmod +x "$CLICK_SCRIPT"
+
+{
+  echo '#!/bin/sh'
+  echo 'exec >>'"$LOG"' 2>&1'
+  echo 'echo "=== click $(date) ==="'
+  echo 'set -x'
+  # Delegate to Python — pick a tmux client and switch-client it to the
+  # target. switch-client works across sessions (unlike select-window), so
+  # this handles the case where no client was attached to our session at
+  # click time (e.g. user moved it away after the notification fired).
+  printf '/usr/bin/python3 - %q %q %q %q %q %q <<'"'"'PYEOF'"'"'\n' \
+    "$SESSION" "$WINDOW" "$PANE" "$KLISTEN" "$KITTY_BIN" "$TMUX_BIN"
+  cat <<'PYEOF'
+import json, subprocess, sys
+session, window, pane, klisten, kitty_bin, tmux_bin = sys.argv[1:7]
+target_sw  = f"{session}:{window}"
+target_swp = f"{target_sw}.{pane}"
+
+def run(cmd):
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+# Kitty topology: map pid -> (os_window_id, inner_window_id, os_focused)
+pid_to_kw = {}
+try:
+    data = json.loads(run([kitty_bin, "@", "--to", klisten, "ls"]).stdout or "[]")
+except Exception as e:
+    print(f"kitty ls failed: {e}"); data = []
+for osw in data:
+    oid = osw.get("id"); focused = bool(osw.get("is_focused"))
+    for tab in osw.get("tabs", []):
+        for w in tab.get("windows", []):
+            for p in w.get("foreground_processes", []):
+                pid_to_kw[p.get("pid")] = (oid, w.get("id"), focused)
+
+# Tmux clients
+clients = []
+for line in run([tmux_bin, "list-clients", "-F",
+                 "#{client_pid}\t#{client_tty}\t#{client_session}"]).stdout.splitlines():
+    parts = line.split("\t")
+    if len(parts) == 3:
+        try:
+            pid = int(parts[0])
+        except ValueError:
+            continue
+        clients.append({"pid": pid, "tty": parts[1], "session": parts[2],
+                        "kw": pid_to_kw.get(pid, (None, None, False))})
+
+# Pick: on-target-session > in-focused-kitty-window > any
+chosen = next((c for c in clients if c["session"] == session), None)
+if not chosen:
+    chosen = next((c for c in clients if c["kw"][2]), None)
+if not chosen and clients:
+    chosen = clients[0]
+
+print(f"chosen={chosen}")
+if chosen:
+    run([tmux_bin, "switch-client", "-c", chosen["tty"], "-t", target_sw])
+    run([tmux_bin, "select-pane", "-t", target_swp])
+    _, inner, _ = chosen["kw"]
+    if inner is not None:
+        run([kitty_bin, "@", "--to", klisten, "focus-window", "--match", f"id:{inner}"])
+else:
+    print("no tmux clients; nothing to switch")
+PYEOF
+  printf 'PYEOF\n'
+} >"$CLICK_SCRIPT"
+
+# Log what we're building, for debugging.
+{
+  echo "=== fire $(date) ==="
+  echo "TMUX_PANE=$TMUX_PANE SESSION=$SESSION WINDOW=$WINDOW PANE=$PANE"
+  echo "KITTY_WINDOW_ID(env,stale)=${KITTY_WINDOW_ID:-} KITTY_WINDOW_ID(resolved)=$KID KITTY_OS_FOCUSED=$KITTY_OS_FOCUSED"
+  echo "WIN_ACTIVE=$WIN_ACTIVE PANE_ACTIVE=$PANE_ACTIVE SESS_ATTACHED=$SESS_ATTACHED"
+  echo "KITTY_LISTEN_ON(derived)=$KLISTEN"
+  echo "---- click script ----"
+  cat "$CLICK_SCRIPT"
+  echo "---- end ----"
+} >>"$LOG" 2>&1
+
+# ---- fire notification ----------------------------------------------------
+
+ARGS=(-title "$TITLE" -message "$MSG" -activate net.kovidgoyal.kitty
+      -execute "/bin/sh $CLICK_SCRIPT")
+
+if [[ -n "$APP_ICON" ]]; then
+  ARGS+=(-appIcon "$APP_ICON")
+fi
+
+exec "$NOTIFIER" "${ARGS[@]}"

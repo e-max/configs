@@ -1,10 +1,9 @@
 #!/bin/bash
 
-# Check if NVIM_LISTEN_ADDRESS is set
-if [ -z "$NVIM_LISTEN_ADDRESS" ]; then
-    # NVIM_LISTEN_ADDRESS is not set, run nvim with the file
-    nvim "$@"
+
+# If TMUX_NVIM_ADDRESS is set and the socket does NOT exist, start listening with file
+if [ -n "$TMUX_NVIM_ADDRESS" ] && [ ! -S "$TMUX_NVIM_ADDRESS" ]; then
+    nvim --listen "$TMUX_NVIM_ADDRESS" "$@"
 else
-    # NVIM_LISTEN_ADDRESS is set, run nvim with --server and --remote options
-    nvim --listen "$NVIM_LISTEN_ADDRESS" "$@"
+    nvim "$@"
 fi

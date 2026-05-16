@@ -1,3 +1,17 @@
-tmux new-session -s $(basename $(pwd)) -e NVIM_LISTEN_ADDRESS=/tmp/nvim-$(basename $(pwd))
+#tmux new-session -s $(basename $(pwd)) -e TMUX_NVIM_ADDRESS="/tmp/nvim$(basename "$(pwd)" | tr -d '-')" nvim
+set -e
 
+SESSION_NAME="${1:-$(basename "$(pwd)")}"
+NVIM_SOCKET="/tmp/nvim$(echo "$SESSION_NAME" | tr -d '-')"
 
+if tmux has-session -t "=$SESSION_NAME" 2>/dev/null; then
+  echo "tmux session '$SESSION_NAME' already exists" >&2
+  exit 1
+fi
+
+tmux new-session -d -s "$SESSION_NAME" -e TMUX_NVIM_ADDRESS="$NVIM_SOCKET" \
+  "zsh -i -c '~/bin/vim; zsh'"  # Start nvim inside zsh, then return to shell when nvim exits
+
+tmux new-window -t "$SESSION_NAME:" -e TMUX_NVIM_ADDRESS="$NVIM_SOCKET"
+
+tmux attach-session -t "$SESSION_NAME"

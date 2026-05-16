@@ -1,12 +1,17 @@
-sess=$(tmux list-sessions | sed -E 's/:.*$//' | grep -v \"^$(tmux display-message -p '#S')\$\"  | nl | fzf --reverse | awk '{print $2}');
-if [ -n "$sess" ]; then
+#!/bin/bash
+list=$(tmux list-sessions | sed -E 's/:.*$//')
 if [ -n "$TMUX" ]; then
-  tmux switch-client -t $sess
+  current=$(tmux display-message -p '#S')
+  list=$(echo "$list" | grep -v "^${current}$")
+fi
+
+sess=$(echo "$list" | nl | fzf --reverse | awk '{print $2}')
+if [ -n "$sess" ]; then
+  if [ -n "$TMUX" ]; then
+    tmux switch-client -t "$sess"
+  else
+    tmux attach-session -dt "$sess"
+  fi
 else
-  tmux attach-session -dt $sess
+  echo "session not selected"
 fi
-else 
-  echo "session not selected";
-fi
-
-
